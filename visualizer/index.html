@@ -1,0 +1,2217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>6G-NTN Simulator Dashboard</title>
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.117/Build/Cesium/Widgets/widgets.css" rel="stylesheet" />
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.117/Build/Cesium/Cesium.js"></script>
+
+  <!-- Chart.js: KPI plots -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- All CSS styles for sidebar, tabs, dark theme -->
+  <style>
+    :root {
+      --bg: #07111f;
+      --panel: rgba(10, 18, 32, 0.96);
+      --panel-2: rgba(14, 24, 43, 0.96);
+      --surface: rgba(255,255,255,0.03);
+      --surface-2: rgba(255,255,255,0.045);
+      --accent: #7dd3fc;
+      --accent-2: #8b5cf6;
+      --text: #e5eefb;
+      --muted: #96a6bf;
+      --line: rgba(148, 163, 184, 0.18);
+      --good: #34d399;
+      --warn: #fbbf24;
+      --bad: #fb7185;
+      --sidebar-width: 720px;
+      --sidebar-min: 320px;
+      --sidebar-max: 1000px;
+      --radius: 16px;
+      --shadow: 0 18px 40px rgba(0,0,0,0.28);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: radial-gradient(circle at top left, #10213d 0, var(--bg) 50%, #020817 100%);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    }
+
+    button, input, select, textarea {
+      font: inherit;
+    }
+
+    #app {
+      display: grid;
+      grid-template-columns: var(--sidebar-width) 10px minmax(0, 1fr);
+      width: 100%;
+      height: 100%;
+    }
+
+    #sidebar {
+      min-width: var(--sidebar-min);
+      max-width: var(--sidebar-max);
+      background: linear-gradient(180deg, var(--panel), var(--panel-2));
+      border-right: 1px solid var(--line);
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      min-height: 0;
+    }
+
+    .sidebar-head {
+      padding: 20px 20px 14px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0));
+    }
+
+    .app-title {
+      margin: 0;
+      font-size: 20px;
+      letter-spacing: 0.02em;
+    }
+
+    .app-subtitle {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .sidebar-body {
+      display: grid;
+      grid-template-columns: 168px minmax(0, 1fr);
+      min-height: 0;
+      height: 100%;
+    }
+
+    .nav-rail {
+      border-right: 1px solid var(--line);
+      padding: 14px 10px;
+      overflow: auto;
+      background: rgba(2, 6, 23, 0.22);
+    }
+
+    .nav-group {
+      display: grid;
+      gap: 8px;
+    }
+
+    .tab-btn {
+      width: 100%;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      text-align: left;
+      padding: 12px 12px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: 180ms ease;
+      font-weight: 600;
+    }
+
+    .tab-btn:hover {
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+    }
+
+    .tab-btn.active {
+      color: var(--text);
+      background: linear-gradient(135deg, rgba(37,99,235,0.22), rgba(124,58,237,0.18));
+      border-color: rgba(125, 211, 252, 0.26);
+      box-shadow: inset 0 0 0 1px rgba(125,211,252,0.12);
+    }
+
+    .tab-panels {
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .tab-panel {
+      display: none;
+      height: 100%;
+      overflow: auto;
+      padding: 18px;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    .section {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 14px;
+      background: var(--surface);
+      backdrop-filter: blur(8px);
+      box-shadow: var(--shadow);
+    }
+
+    .section h2 {
+      margin: 0 0 10px 0;
+      font-size: 13px;
+      color: #d7e3f8;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .empty-state {
+      min-height: 220px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      color: var(--muted);
+      border: 1px dashed rgba(148,163,184,0.22);
+      border-radius: 14px;
+      background: rgba(255,255,255,0.02);
+      padding: 24px;
+    }
+
+    .json-debug {
+      margin-top: 8px;
+      min-height: 220px;
+      max-height: 420px;
+      overflow: auto;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(148,163,184,0.16);
+      background: rgba(2, 6, 23, 0.82);
+      color: #dbeafe;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin: 8px 0 4px;
+    }
+
+    input, select, button {
+      width: 100%;
+      box-sizing: border-box;
+      border-radius: 10px;
+      border: 1px solid rgba(148,163,184,0.22);
+      background: rgba(2, 6, 23, 0.72);
+      color: var(--text);
+      padding: 10px 12px;
+      outline: none;
+    }
+
+    input:focus, select:focus, button:focus-visible {
+      border-color: rgba(125, 211, 252, 0.75);
+      box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.12);
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .actions.single {
+      grid-template-columns: 1fr;
+    }
+
+    .actions.triple {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+
+    .actions button {
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, #2563eb, #7c3aed);
+      border: none;
+    }
+
+    .secondary {
+      background: linear-gradient(135deg, rgba(15,23,42,0.9), rgba(30,41,59,0.9));
+    }
+
+    .toggle {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .toggle button {
+      width: 50%;
+    }
+
+    .toggle .active {
+      border-color: rgba(125, 211, 252, 0.85);
+      box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.14);
+    }
+
+    .bg-injection-toggle button {
+      width: 50%;
+      font-size: 11px;
+      line-height: 1.3;
+      white-space: normal;
+      padding: 8px 6px;
+    }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .kpi {
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+    }
+
+    .kpi .name {
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .kpi .value {
+      margin-top: 4px;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .kpi-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 20px; }
+    .kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+    .kpi-card .kpi-label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+    .kpi-card .kpi-value { font-size: 22px; font-weight: 700; }
+    .kpi-card .kpi-sub { font-size: 11px; color: var(--text2); margin-top: 4px; }
+    .kpi-tput { color: var(--accent); }
+    .kpi-lat { color: var(--accent2); }
+    .kpi-loss { color: var(--warn); }
+    .kpi-pkts { color: var(--gold); }
+
+    #priority-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .priority-card {
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 12px;
+      background: rgba(2, 6, 23, 0.5);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .priority-card-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .priority-badge {
+      flex-shrink: 0;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent);
+      background: rgba(125, 211, 252, 0.10);
+      border: 1px solid rgba(125, 211, 252, 0.25);
+      border-radius: 6px;
+      padding: 2px 7px;
+      letter-spacing: 0.05em;
+    }
+
+    .priority-label-input {
+      flex: 1;
+      min-width: 0;
+      font-size: 13px;
+      font-weight: 600;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+      border-radius: 0;
+      padding: 3px 2px;
+      color: var(--text);
+      outline: none;
+      width: auto;
+    }
+
+    .priority-label-input:focus {
+      border-bottom-color: var(--accent);
+      box-shadow: none;
+    }
+
+    .priority-remove-btn {
+      flex-shrink: 0;
+      width: auto;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 14px;
+      cursor: pointer;
+      padding: 0 2px;
+      line-height: 1;
+      border-radius: 4px;
+      transition: color 0.15s;
+    }
+
+    .priority-remove-btn:hover {
+      color: var(--bad);
+    }
+
+    .priority-card-body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .priority-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .priority-field label {
+      margin: 0;
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .priority-field select,
+    .priority-field input[type="number"] {
+      padding: 6px 8px;
+      font-size: 12px;
+      border-radius: 8px;
+    }
+
+    .priority-field-muted {
+      opacity: 0.45;
+    }
+
+    .priority-na {
+      font-size: 12px;
+      color: var(--muted);
+      padding: 6px 0;
+      font-style: italic;
+    }
+
+    .log {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      background: rgba(2,6,23,0.7);
+      padding: 10px;
+      border-radius: 10px;
+      min-height: 80px;
+      max-height: 220px;
+      overflow: auto;
+      border: 1px solid rgba(148,163,184,0.16);
+    }
+
+    .status-ok { color: var(--good); }
+    .status-warn { color: var(--warn); }
+    .status-bad { color: var(--bad); }
+    .small { font-size: 11px; color: var(--muted); }
+
+    #sidebarResizer {
+      cursor: col-resize;
+      position: relative;
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+      border-left: 1px solid rgba(255,255,255,0.03);
+      border-right: 1px solid rgba(0,0,0,0.25);
+    }
+
+    #sidebarResizer::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      margin: auto;
+      width: 4px;
+      height: 52px;
+      border-radius: 999px;
+      background: rgba(148,163,184,0.34);
+    }
+
+    #sidebarResizer:hover::before,
+    body.resizing #sidebarResizer::before {
+      background: var(--accent);
+    }
+
+    #viewer {
+      width: 100%;
+      height: 100%;
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      visibility: hidden;
+      opacity: 0;
+    }
+
+    @media (max-width: 980px) {
+      #app {
+        grid-template-columns: minmax(300px, 46vw) 8px minmax(0, 1fr);
+      }
+
+      .sidebar-body {
+        grid-template-columns: 1fr;
+      }
+
+      .nav-rail {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 10px;
+      }
+
+      .nav-group {
+        display: flex;
+        overflow: auto;
+      }
+
+      .tab-btn {
+        min-width: 150px;
+      }
+    }
+
+
+    .time-row {
+      align-items: end;
+    }
+
+    .flow-box, .results-box {
+      margin-top: 14px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--surface-2);
+    }
+
+    .flow-box h3,
+    .results-box h3 {
+      margin: 0 0 12px;
+      font-size: 13px;
+      color: #d7e3f8;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .flow-box .toggle {
+      margin-top: 0;
+    }
+
+    .results-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .compact-empty {
+      min-height: 120px;
+      margin: 0;
+    }
+
+    .path-list {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .path-node-card,
+    .path-link-card {
+      display: grid;
+      grid-template-columns: 0.5fr 1fr;
+      border-radius: 12px;
+      background: rgba(2, 6, 23, 0.5);
+      overflow: hidden;
+      min-height: 40px;
+    }
+
+    .path-node-left,
+    .path-link-left {
+      padding: 12px;
+      border-right: 1px solid rgba(148, 163, 184, 0.18);
+      display: flex;
+      align-items: center;
+    }
+
+    .path-node-right,
+    .path-link-right {
+      padding: 12px;
+      display: flex;
+      align-items: center;
+    }
+
+    .satellite-card {
+      border: 0.3px solid #3b82f6;
+    }
+
+    .ue-card {
+      border: 0.3px solid #22c55e;
+    }
+
+    .path-link-card {
+      border: 0.3px solid #ef4444;
+    }
+
+    .path-node-title,
+    .path-link-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      margin: 0;
+    }
+
+    .path-node-meta,
+    .path-link-meta {
+      display: grid;
+      gap: 4px;
+      font-size: 12px;
+      color: var(--muted);
+      width: 100%;
+    }
+
+    .time-row {
+      display: flex;
+      gap: 12px;
+    }
+
+    .time-field-main {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .time-field-step {
+      flex: 0 0 80px;
+    }
+
+    .time-row input {
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+  </style>
+</head>
+<body>
+  <div id="app">
+
+    <!-- ============================================================ -->
+    <!-- SIDEBAR: Left panel with tabs and controls                   -->
+    <!-- ============================================================ -->
+    <aside id="sidebar">
+      <div class="sidebar-head">
+        <h1 class="app-title">6G-NTN Simulator</h1>
+        <div class="app-subtitle">Ready for orbit.</div>
+      </div>
+
+      <div class="sidebar-body">
+        <!-- Navigation tabs -->
+        <nav class="nav-rail" aria-label="Sidebar tabs">
+          <div class="nav-group">
+            <button class="tab-btn active" data-tab="connectionTab">Connection</button>
+            <button class="tab-btn" data-tab="ueTab">Flow Setup</button>
+            <button class="tab-btn" data-tab="networkTab">Network Setup</button>
+            <button class="tab-btn" data-tab="resultsTab">Simulation Results</button>
+            <button class="tab-btn" data-tab="statusTab">Status</button>
+            <button class="tab-btn" data-tab="debugTab">Debug</button>
+          </div>
+        </nav>
+        
+        <!-- Tab panels -->
+        <div class="tab-panels">
+
+          <!-- CONNECTION TAB -->
+          <section id="connectionTab" class="tab-panel active">
+            <div class="section">
+              <h2>Connection</h2>
+
+              <label for="apiBase">API Base URL</label>
+              <input id="apiBase" value="http://127.0.0.1:8000" />
+
+              <label for="tleFile">TLE File</label>
+              <select id="tleFile">
+                <option>IridiumNEXT.tle</option>
+              </select>
+
+              <div class="row time-row">
+                <div class="time-field time-field-main">
+                  <label id="currentTimeLabel" for="currentTime">Current time (Simulation time will be extracted from .tle file)</label>
+                  <input
+                    id="currentTime"
+                    type="text"
+                    placeholder="DD/MM/YYYY HH:MM:SS.xxx"
+                    value=""
+                  />
+                </div>
+
+                <div class="time-field time-field-step">
+                  <label for="timeStep">Step Size (s)</label>
+                  <input id="timeStep" type="number" min="0.001" step="1" value="10" />
+                </div>
+              </div>
+
+              <div class="actions">
+                <button id="startBackendBtn" class="secondary" type="button">Start Backend</button>
+                <button id="initBtn" class="primary" type="button">Init</button>
+              </div>
+
+              <div class="actions">
+                <button id="autoBtn" class="secondary" type="button">Auto Poll: Off</button>
+                <button id="updateBtn" class="secondary" type="button">Update</button>
+              </div>
+
+              <div class="actions double">
+                <button id="resetViewBtn" class="secondary" type="button">Reset View</button>
+                <button id="showGlobeBtn" class="secondary" type="button">Show Globe</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- FLOW SETUP TAB -->
+          <section id="ueTab" class="tab-panel">
+            <!-- Routing: source, destination, metric, handover -->
+            <div class="section">
+              <h2>Routing</h2>
+
+              <div class="flow-box" style="margin-top: 0; margin-bottom: 14px;">
+                <h3>Endpoint Definition</h3>
+                <div class="row">
+                  <div>
+                    <label for="source">Source UE</label>
+                    <select id="source"></select>
+                  </div>
+                  <div>
+                    <label for="destination">Destination UE</label>
+                    <select id="destination"></select>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div>
+                    <label for="metric">Metric</label>
+                    <select id="metric">
+                      <option value="min_hop">min_hop</option>
+                      <option value="total_delay_ms">total_delay_ms</option>
+                      <option value="distance_km">distance_km</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label for="strictBtn">Handover mode</label>
+                    <div class="toggle">
+                      <button id="strictBtn" class="active" type="button">Strict</button>
+                      <button id="marginBtn" type="button">Margin</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+               <!-- UE management -->
+              <h2>User Equipment</h2>
+
+              <label for="ueId">UE ID</label>
+              <input id="ueId" placeholder="UE_1" />
+
+              <div class="row">
+                <div>
+                  <label for="ueLat">Latitude</label>
+                  <input id="ueLat" placeholder="lat deg" />
+                </div>
+                <div>
+                  <label for="ueLon">Longitude</label>
+                  <input id="ueLon" placeholder="lon deg" />
+                </div>
+              </div>
+
+              <div class="actions">
+                <button id="addUeBtn" class="secondary" type="button">Add UE</button>
+                <button id="clearUeBtn" class="secondary" type="button">Clear UEs</button>
+              </div>
+
+              <label>UEs</label>
+              <div id="ueList" class="log">No UEs defined.</div>
+            </div>
+            
+             <!-- Traffic parameters -->
+            <div class="section">
+              <h2>Flow Characteristics</h2>
+              <div class="grid-3">
+                <div class="field">
+                  <label for="user_flow_priority">Priority Level </label>
+                  <select id="user_flow_priority">
+                    <option value="0">0 — Strict Priority (highest)</option>
+                    <option value="1" selected>1 — WRR Class 1</option>
+                    <option value="2">2 — WRR Class 2</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="user_flow_cbr_vbr">Traffic Type</label>
+                  <select id="user_flow_cbr_vbr" onchange="onTrafficTypeChange()">
+                    <option value="CBR" selected>CBR — Constant Bit Rate</option>
+                    <option value="VBR">VBR — Variable Bit Rate</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="user_flow_peak_rate">Peak Rate (Mbps)</label>
+                  <input type="number" id="user_flow_peak_rate" value="10" min="0.01" step="0.01"/>
+                </div>
+              </div>
+              <div class="row">
+                <div class="field">
+                  <label for="user_flow_avg_rate">Average Rate (Mbps)</label>
+                  <input type="number" id="user_flow_avg_rate" value="10" min="0.01" step="0.01"/>
+                </div>
+                <div class="field" id="burstiness-field">
+                  <label for="user_flow_burstiness">Burstiness (σ / μ)</label>
+                  <input type="number" id="user_flow_burstiness" value="0" min="0" max="10" step="0.01"/>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- NETWORK SETUP TAB -->
+          <section id="networkTab" class="tab-panel">
+            <div class="section">
+              <h2>Network Parameters Setup</h2>
+              <div class="flow-box" style="margin-top: 0; margin-bottom: 14px;">
+              <h3>Physical Parameters</h3>
+                <div class="grid-3">
+                  <label for="packet_size_bytes">Packet Size (bytes)</label>
+                  <input type="number" id="packet_size_bytes" value="1500" min="64" max="9000" step="1"/>
+
+                  <label for="buffer_size">Buffer Size (packets)</label>
+                  <input type="number" id="buffer_size" value="256" min="1" max="65535" step="1"/>
+                </div>
+              </div>
+              
+              <!-- Background traffic -->
+              <div class="flow-box" style="margin-top:0;margin-bottom:14px">
+                <h3>Background Traffic</h3>
+                <label for="background_traffic_mbps">Offered background traffic (Mbps)</label>
+                <div style="display:flex;gap:10px;align-items:center">
+                  <input type="range" id="bgslider" min="0" max="20000" step="10" value="0"
+                        style="flex:1" oninput="document.getElementById('background_traffic_mbps').value=this.value">
+                  <input type="number" id="background_traffic_mbps" min="0" max="20000" value="0"
+                        style="width:85px" oninput="document.getElementById('bgslider').value=this.value">
+                </div>
+
+                <label>Background traffic injection type</label>
+                <div class="toggle bg-injection-toggle" id="bgInjectionToggle">
+                  <button id="bgSourceSideBtn" type="button">Source-side access satellite only</button>
+                  <button id="bgPopulationBtn" type="button" class="active">Population based</button>
+                </div>
+              </div>
+              
+              <!-- Priority levels -->
+              <div class="section">
+                <h2>Priority Levels</h2>
+                <p style="font-size:12px;color:var(--text2);margin-bottom:12px">Define each priority class. The sum of the fractions of load must be 1.</p>
+                <div id="priority-list"></div>
+                <button class="btn btn-secondary" onclick="addPriorityLevel()" style="margin-top:8px">+ Add Priority Level</button>
+                <div id="priority-json-preview" style="font-size:11px;color:var(--text2);margin-top:10px;font-family:monospace;background:var(--bg);padding:8px;border-radius:4px;border:1px solid var(--border);display:none"></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- RESULTS TAB -->
+          <section id="resultsTab" class="tab-panel">
+            <div class="section">
+              <h2>Simulation Results</h2>
+
+              <!-- KPI Summary cards -->
+               <div class="results-box">
+                  <h3>Overview</h3>
+                  <div class="kpi-grid">
+                    <div class="kpi-card">
+                      <div class="kpi-label">Throughput (avg)</div>
+                      <div class="kpi-value kpi-tput" id="kpi-tput">—</div>
+                      <div class="kpi-sub" id="kpi-tput-range">min / max: — / —</div>
+                    </div>
+                    <div class="kpi-card">
+                      <div class="kpi-label">Latency (avg)</div>
+                      <div class="kpi-value kpi-lat" id="kpi-lat">—</div>
+                      <div class="kpi-sub" id="kpi-lat-range">min / max: — / —</div>
+                    </div>
+                    <div class="kpi-card">
+                      <div class="kpi-label">Packet Loss Ratio (avg)</div>
+                      <div class="kpi-value kpi-loss" id="kpi-loss">—</div>
+                      <div class="kpi-sub" id="kpi-loss-sub" style="display: none;">—</div>
+                    </div>
+                    <div class="kpi-card">
+                      <div class="kpi-label">Packets (overall)</div>
+                      <div class="kpi-value kpi-pkts" id="kpi-pkts">—</div>
+                      <div class="kpi-sub" id="kpi-pkts-sub">—</div>
+                    </div>
+                  </div>
+                </div>
+
+              
+              <!-- Path details -->
+              <div class="results-grid">
+                <div class="results-box">
+                  <h3>Path</h3>
+                  <div id="pathBox" class="path-list empty-state compact-empty">No active path.</div>
+                </div>
+              </div>
+
+              <!-- Charts -->
+              <div class="results-grid">
+                <!-- Throughput plot -->
+                <div class="results-box">
+                  <h3>Throughput vs. Time</h3>
+                  <div style="position: relative; height: 280px; width: 100%;">
+                  <canvas id="plot-throughput"></canvas>
+                  </div>
+                </div>
+
+                <!-- Latency plot -->
+                <div class="results-box">
+                  <h3>Latency vs. Time</h3>
+                  <div style="position: relative; height: 280px; width: 100%;">
+                    <canvas id="plot-latency"></canvas>
+                  </div>
+                </div>
+
+                <!-- Packet Loss plot -->
+                <div class="results-box">
+                  <h3>Loss Ratio vs. Time</h3>
+                  <div style="position: relative; height: 280px; width: 100%;">
+                    <canvas id="plot-loss"></canvas>
+                  </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- STATUS TAB -->
+          <section id="statusTab" class="tab-panel">
+            <div class="section">
+              <h2>Status</h2>
+              <div class="kpis">
+                <div class="kpi"><div class="name">Ready</div><div class="value" id="readyVal">-</div></div>
+                <div class="kpi"><div class="name">Call Type</div><div class="value" id="callTypeVal">-</div></div>
+                <div class="kpi"><div class="name">Route Hops</div><div class="value" id="hopsVal">-</div></div>
+                <div class="kpi"><div class="name">Handover Mode</div><div class="value" id="modeVal">margin</div></div>
+                <div class="kpi"><div class="name">Engine</div><div class="value" id="engineVal">-</div></div>
+                <div class="kpi"><div class="name">Satellites</div><div class="value" id="satCountVal">-</div></div>
+              </div>
+
+              <label>Events</label>
+              <div id="events" class="log">Waiting for init...</div>
+            </div>
+          </section>
+
+          <!-- DEBUG TAB -->
+          <section id="debugTab" class="tab-panel">
+            <div class="section">
+              <h2>Debug</h2>
+              <div class="small">Current Snapshot</div>
+              <div class="small" id="snapshotMeta">No data yet.</div>
+
+              <div class="small" style="margin-top: 12px;">Latest received JSON Payload</div>
+              <pre id="latestPayload" class="json-debug">No payload received yet.</pre>
+
+              <div class="small" style="margin-top: 12px;">Latest sent JSON Payload</div>
+              <pre id="latestPayloadSent" class="json-debug">No payload sent yet.</pre>
+            </div>
+          </section>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Resize handle -->
+    <div id="sidebarResizer" aria-hidden="true"></div>
+    <!-- Cesium 3D Viewer -->
+    <main id="viewer"></main>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- JAVASCRIPT - Application Logic                                -->
+  <!-- ============================================================ -->
+
+  <script>
+    // --------------------------------------------------------------
+    // STATE - Frontend state object
+    // --------------------------------------------------------------
+    const state = {
+      handoverMode: 'strict',
+      backgroundTrafficInjectionType: 'population_based',
+      autoPoll: false,
+      pollTimer: null,
+      pollInProgress: false,
+      lastData: null,
+      lastReferenceTime: 0,
+      matlab: null,
+      // Cesium entities
+      satelliteEntities: new Map(),
+      linkEntities: [],
+      ueEntities: [],
+      routeEntities: [],
+      earthEntity: null,
+      viewer: null,
+      didInitialFit: false
+    };
+    // user equipments managed in the frontend
+    state.userEquipments = [];
+    state.priorityLevels = [
+      { priority: 0, scheduling: 'SP',  weight: 1, label: 'Control (SP)', fraction_of_load: 0.1 },
+      { priority: 1, scheduling: 'WRR', weight: 3, label: 'Real-Time', fraction_of_load: 0.3 },
+      { priority: 2, scheduling: 'WRR', weight: 1, label: 'Best Effort', fraction_of_load: 0.6 },
+    ];
+
+    // ── Render the priority rows into #priorityList ───────────────
+    function renderPriorityList() {
+      const container = document.getElementById('priority-list');
+      if (!container) return;
+      container.innerHTML = '';
+
+      state.priorityLevels.forEach((lv, i) => {
+        const card = document.createElement('div');
+        card.className = 'priority-card';
+        card.innerHTML = `
+          <div class="priority-card-header">
+            <span class="priority-badge">P${i}</span>
+            <input
+              class="priority-label-input"
+              type="text"
+              value="${escapeHtml(lv.label)}"
+              placeholder="Class label"
+              oninput="state.priorityLevels[${i}].label = this.value; syncFlowPriorityDropdown()"
+            />
+            <button class="priority-remove-btn" onclick="removePriorityLevel(${i})" title="Remove">✕</button>
+          </div>
+          <div class="priority-card-body">
+            <div class="priority-field">
+              <label>Scheduling</label>
+              <select onchange="state.priorityLevels[${i}].scheduling = this.value; renderPriorityList()">
+                <option value="SP"  ${lv.scheduling === 'SP'  ? 'selected' : ''}>Strict Priority</option>
+                <option value="WRR" ${lv.scheduling === 'WRR' ? 'selected' : ''}>WRR</option>
+                <option value="DRR" ${lv.scheduling === 'DRR' ? 'selected' : ''}>DRR</option>
+              </select>
+            </div>
+            ${lv.scheduling !== 'SP' ? `
+            <div class="priority-field">
+              <label>Weight</label>
+              <input
+                type="number" min="1" max="100"
+                value="${lv.weight}"
+                oninput="state.priorityLevels[${i}].weight = parseInt(this.value) || 1"
+              />
+            </div>` : `
+            <div class="priority-field priority-field-muted">
+              <label>Weight</label>
+              <span class="priority-na">N/A — strict</span>
+            </div>`}
+            <div class="priority-field">
+              <label>Fraction of Load</label>
+              <input
+                type="number" min="0" max="1"
+                value="${lv.fraction_of_load}"
+              />
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      syncFlowPriorityDropdown();
+    }
+
+    function addPriorityLevel() {
+      const n = state.priorityLevels.length;
+      state.priorityLevels.push({ priority: n, scheduling: 'WRR', weight: 1, label: `Class ${n}`, fraction_of_load: 0.1 });
+      renderPriorityList();
+    }
+
+    function removePriorityLevel(i) {
+      if (state.priorityLevels.length <= 1) return;
+      state.priorityLevels.splice(i, 1);
+      state.priorityLevels.forEach((lv, j) => { lv.priority = j; });
+      renderPriorityList();
+    }
+
+    // Keep the "Flow Priority" <select> in sync with priority rows
+    function syncFlowPriorityDropdown() {
+      const sel = document.getElementById('user_flow_priority');
+      if (!sel) return;
+      const current = sel.value;
+      sel.innerHTML = state.priorityLevels.map((lv, i) =>
+        `<option value="${i}" ${String(current) === String(i) ? 'selected' : ''}>${i} — ${escapeHtml(lv.label)} (${lv.scheduling})</option>`
+      ).join('');
+    }
+
+    function onTrafficTypeChange() {
+      const isCBR = document.getElementById('user_flow_cbr_vbr')?.value === 'CBR';
+      const avgRateField    = document.getElementById('user_flow_avg_rate');
+      const burstinessField = document.getElementById('user_flow_burstiness');
+      const burstWrap       = document.getElementById('burstiness-field');
+
+      if (avgRateField) {
+        avgRateField.disabled = isCBR;
+        if (isCBR) avgRateField.value = document.getElementById('user_flow_peak_rate')?.value ?? avgRateField.value;
+      }
+      if (burstinessField) {
+        burstinessField.disabled = isCBR;
+        if (isCBR) burstinessField.value = '0';
+      }
+      if (burstWrap) burstWrap.style.opacity = isCBR ? '0.4' : '1';
+    }
+
+    function buildFlowPayload() {
+      return {
+        buffer_size:          parseInt(document.getElementById('buffer_size')?.value)      || 256,
+        packet_size_bytes:    parseInt(document.getElementById('packet_size_bytes')?.value) || 1500,
+        monitor_interval:     parseFloat(document.getElementById('monitor_interval')?.value) || 1.0,
+        priority_levels:      state.priorityLevels.map(lv => ({
+          priority:         lv.priority,
+          scheduling:       lv.scheduling,
+          weight:           lv.weight,
+          label:            lv.label,
+          fraction_of_load: lv.fraction_of_load
+        })),
+        // Flow of interest
+        user_flow_priority:   parseInt(document.getElementById('user_flow_priority')?.value)    ?? 1,
+        user_flow_cbr_vbr:    document.getElementById('user_flow_cbr_vbr')?.value               ?? 'CBR',
+        user_flow_peak_rate:  parseFloat(document.getElementById('user_flow_peak_rate')?.value)  || 10,
+        user_flow_avg_rate:   parseFloat(document.getElementById('user_flow_avg_rate')?.value)   || 10,
+        user_flow_burstiness: parseFloat(document.getElementById('user_flow_burstiness')?.value) || 0,
+        background_traffic_mbps: parseFloat(document.getElementById('background_traffic_mbps')?.value) || 0.0,
+        background_traffic_injection_type: state.backgroundTrafficInjectionType,
+      };
+    }
+
+    function renderUEList() {
+      const el = document.getElementById('ueList');
+      if (!state.userEquipments.length) {
+        el.textContent = 'No UEs defined.';
+        updateUESelectors();
+        return;
+      }
+      el.innerHTML = state.userEquipments.map(u => `${u.node_id} (${u.lat_deg.toFixed ? u.lat_deg : u.lat_deg}, ${u.lon_deg.toFixed ? u.lon_deg : u.lon_deg})`).join(' | ');
+      updateUESelectors();
+    }
+
+    function updateUESelectors() {
+      const src = document.getElementById('source');
+      const dst = document.getElementById('destination');
+      const options = state.userEquipments.map(u => `<option value="${u.node_id}">${u.node_id}</option>`).join('');
+      src.innerHTML = options || '<option value="0">0</option>';
+      dst.innerHTML = options || '<option value="1">1</option>';
+      if (state.userEquipments.length > 0) {
+        src.value = state.userEquipments[0].node_id;
+        dst.value = state.userEquipments.length > 1 ? state.userEquipments[1].node_id : state.userEquipments[0].node_id;
+      }
+    }
+
+    // --------------------------------------------------------------
+    // Cesium Setup - 3D Globe
+    // --------------------------------------------------------------
+
+    const CESIUM_ION_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI3M2MxZjNlYy1mZjQ2LTQ4ZjItOTI2MS1iNDFhM2FjMGYzYzUiLCJpZCI6NDMyMjcyLCJpc3MiOiJodHRwczovL2lvbi5jZXNpdW0uY29tIiwiYXVkIjoidW5kZWZpbmVkX2RlZmF1bHQiLCJpYXQiOjE3Nzg5MTYyNjR9.s-u048CxFDTUSFtSWturobb79q7wvdmllNNJTpA_IyQ';
+    Cesium.Ion.defaultAccessToken = CESIUM_ION_TOKEN;
+
+    // --------------------------------------------------------------
+    // API Calls
+    // --------------------------------------------------------------
+    const apiBase = () => document.getElementById('apiBase').value.replace(/\/+$/, '');
+
+    // Simple deduplicating logger to avoid noisy repeated DOM updates
+    state._lastLogged = '';
+    function log(msg, kind = 'status-ok') {
+      if (msg === state._lastLogged) return; // skip duplicate messages
+      state._lastLogged = msg;
+      const box = document.getElementById('events');
+      const line = document.createElement('div');
+      line.className = kind;
+      line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+      box.prepend(line);
+      // keep log bounded
+      while (box.children.length > 200) box.removeChild(box.lastChild);
+    }
+
+    async function fetchJson(url, options = {}) {
+      const res = await fetch(url, options);
+      const text = await res.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : {}; } catch (err) { throw new Error(`Invalid JSON from ${url}: ${text}`); }
+      if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+      return data;
+    }
+
+    async function addCesiumIonImagery() {
+      if (!state.viewer) throw new Error('viewer-not-ready');
+      Cesium.Ion.defaultAccessToken = CESIUM_ION_TOKEN;
+      if (typeof Cesium.createWorldImageryAsync === 'function') {
+        const provider = await Cesium.createWorldImageryAsync();
+        state.viewer.imageryLayers.removeAll();
+        state.viewer.imageryLayers.addImageryProvider(provider);
+        return;
+      }
+      if (Cesium.IonImageryProvider && typeof Cesium.IonImageryProvider.fromAssetId === 'function') {
+        const provider = await Cesium.IonImageryProvider.fromAssetId(2, { accessToken: CESIUM_ION_TOKEN });
+        state.viewer.imageryLayers.removeAll();
+        state.viewer.imageryLayers.addImageryProvider(provider);
+        return;
+      }
+      throw new Error('ion-imagery-api-unavailable');
+    }
+
+    async function initViewer() {
+      const earthTexture = buildEarthTextureDataUrl();
+      state.viewer = new Cesium.Viewer('viewer', {
+        animation: false,
+        timeline: false,
+        baseLayerPicker: false,
+        geocoder: false,
+        homeButton: false,
+        sceneModePicker: false,
+        navigationHelpButton: false,
+        infoBox: false,
+        selectionIndicator: false,
+        terrainProvider: new Cesium.EllipsoidTerrainProvider()
+      });
+      // Add Earth imagery (fallback if Ion fails)
+      state.viewer.imageryLayers.removeAll();
+      const fallbackLayer = state.viewer.imageryLayers.addImageryProvider(new Cesium.SingleTileImageryProvider({ url: earthTexture }));
+      fallbackLayer.show = true;
+
+      try {
+        await addCesiumIonImagery();
+        log('Cesium ion imagery loaded', 'status-ok');
+      } catch (err) {
+        console.warn('Cesium ion imagery unavailable, keeping fallback', err);
+        log('Using local Earth fallback imagery', 'status-warn');
+          // keep fallback as a visible base if ion imagery fails later
+      }
+
+      state.viewer.scene.globe.depthTestAgainstTerrain = false;
+      state.viewer.scene.globe.enableLighting = true;
+      state.viewer.scene.globe.show = true;
+      state.viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString('#0f172a');
+      state.viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#07111f');
+      window.__viewer = state.viewer;
+      state.viewer.camera.setView({
+        destination: Cesium.Cartesian3.fromDegrees(0.0, 15.0, 9.0e7),
+        orientation: {
+          heading: 0.0,
+          pitch: -Cesium.Math.PI_OVER_TWO * 0.88,
+          roll: 0.0
+        }
+      });
+      const controller = state.viewer.scene.screenSpaceCameraController;
+      controller.enableInputs = true;
+      controller.enableCollisionDetection = false;
+      const viewerElement = document.getElementById('viewer');
+      viewerElement.style.visibility = 'visible';
+      viewerElement.style.opacity = '1';
+    }
+
+    async function populateTleFiles() {
+      const sel = document.getElementById('tleFile');
+      sel.innerHTML = '';
+      // Try backend-provided list
+      try {
+        const data = await fetchJson(`${apiBase()}/api/tle_list`);
+        const list = data?.tle_files || [];
+        if (list.length === 0) throw new Error('no tle found');
+        list.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p;
+          const display = (p || '').replace(/\\/g, '/').split('/').pop();
+          opt.textContent = display || p;
+          sel.appendChild(opt);
+        });
+        const preferred = Array.from(sel.options).findIndex(o => (o.value || '').replace(/\\/g, '/').endsWith('IridiumNEXT.tle'));
+        sel.selectedIndex = preferred >= 0 ? preferred : 0;
+        log(`TLE list loaded (${list.length})`);
+        return;
+      } catch (err) {
+        console.warn('Could not fetch TLE list from API:', err.message);
+      }
+      // Fallback static options
+      ['IridiumNEXT.tle', 'IridiumConstellation.tle', 'SatellitesOrbitalParameters.tle'].forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        sel.appendChild(opt);
+      });
+      sel.selectedIndex = 0;
+    }
+
+    function buildEarthTextureDataUrl() {
+      const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="2048" height="1024" viewBox="0 0 2048 1024">
+          <defs>
+            <linearGradient id="ocean" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#0f4c81"/>
+              <stop offset="55%" stop-color="#0a2e52"/>
+              <stop offset="100%" stop-color="#03111f"/>
+            </linearGradient>
+            <radialGradient id="atmosphere" cx="50%" cy="46%" r="64%">
+              <stop offset="0%" stop-color="#9ed8ff" stop-opacity="0.14"/>
+              <stop offset="100%" stop-color="#9ed8ff" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <rect width="2048" height="1024" fill="url(#ocean)"/>
+          <ellipse cx="1024" cy="468" rx="690" ry="420" fill="url(#atmosphere)"/>
+          <g fill="#2c8f4d" opacity="0.98">
+            <path d="M180,315 C280,220 390,205 480,270 C535,310 535,385 485,420 C420,464 305,448 220,382 C170,344 160,338 180,315 Z"/>
+            <path d="M470,585 C565,500 690,492 760,545 C822,592 820,680 744,714 C664,751 562,734 490,676 C445,640 438,613 470,585 Z"/>
+            <path d="M785,260 C860,190 975,185 1045,240 C1108,289 1110,360 1048,398 C975,443 858,433 802,377 C760,336 748,293 785,260 Z"/>
+            <path d="M980,620 C1060,550 1172,545 1235,598 C1289,643 1285,718 1215,749 C1138,783 1038,773 985,715 C950,677 945,648 980,620 Z"/>
+            <path d="M1265,265 C1355,195 1465,200 1538,260 C1594,306 1592,380 1528,420 C1450,468 1340,455 1280,392 C1238,348 1230,297 1265,265 Z"/>
+            <path d="M1540,605 C1615,540 1710,540 1782,596 C1842,643 1840,714 1766,748 C1688,784 1598,770 1546,714 C1508,674 1504,636 1540,605 Z"/>
+            <path d="M1735,300 C1800,252 1885,250 1930,295 C1970,335 1964,402 1900,428 C1832,456 1760,440 1730,392 C1708,357 1710,322 1735,300 Z"/>
+          </g>
+          <g fill="#f7f7f7" opacity="0.55">
+            <ellipse cx="360" cy="275" rx="70" ry="24"/>
+            <ellipse cx="910" cy="230" rx="92" ry="28"/>
+            <ellipse cx="1425" cy="245" rx="88" ry="26"/>
+            <ellipse cx="1730" cy="640" rx="72" ry="22"/>
+            <ellipse cx="630" cy="650" rx="82" ry="26"/>
+          </g>
+          <g fill="#6bbef0" opacity="0.26">
+            <circle cx="540" cy="360" r="60"/>
+            <circle cx="990" cy="645" r="74"/>
+            <circle cx="1490" cy="360" r="54"/>
+          </g>
+        </svg>`;
+      return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+    }
+
+    function setMode(mode) {
+      state.handoverMode = mode;
+      document.getElementById('modeVal').textContent = mode;
+      document.getElementById('strictBtn').classList.toggle('active', mode === 'strict');
+      document.getElementById('marginBtn').classList.toggle('active', mode === 'margin');
+    }
+
+    function setBgInjectionType(type) {
+      state.backgroundTrafficInjectionType = type;
+      document.getElementById('bgSourceSideBtn').classList.toggle('active', type === 'source_side_only');
+      document.getElementById('bgPopulationBtn').classList.toggle('active', type === 'population_based');
+    }
+
+    function clearEntities(collection) {
+      collection.forEach(e => state.viewer.entities.remove(e));
+      collection.length = 0;
+    }
+
+    function clearRouteVisuals() {
+      clearEntities(state.linkEntities);
+      clearEntities(state.routeEntities);
+    }
+
+    function satPosition(s) {
+      // Convert ECEF km to Cesium meters
+      return Cesium.Cartesian3.fromElements((s.x_km || 0) * 1000, (s.y_km || 0) * 1000, (s.z_km || 0) * 1000);
+    }
+
+    // Simple SVG circle used as a billboard image for satellites
+    const SAT_ICON = `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><circle cx="16" cy="16" r="10" fill="#7dd3fc" stroke="white" stroke-width="2"/></svg>')}`;
+
+    // --------------------------------------------------------------
+    // Rendering Functions
+    // --------------------------------------------------------------
+
+    function renderSatellites(satellites) {
+      // Creates/updates Cesium billboards for each satellite
+      // Uses SAT_ICON (blue circle) as marker
+      // Stores entities in state.satelliteEntities for reuse
+      if (!state.viewer) return;
+      const seen = new Set();
+      satellites.forEach((s, idx) => {
+        const id = String(s.id ?? idx);
+        seen.add(id);
+        let entity = state.satelliteEntities.get(id);
+        if (!entity) {
+          entity = state.viewer.entities.add({
+            id: `sat-${id}`,
+            position: satPosition(s),
+            billboard: { image: SAT_ICON, width: 18, height: 18, verticalOrigin: Cesium.VerticalOrigin.CENTER },
+            label: { text: id, font: '12px monospace', fillColor: Cesium.Color.WHITE, pixelOffset: new Cesium.Cartesian2(0, -22), scaleByDistance: new Cesium.NearFarScalar(1.5e7, 1.0, 9.0e7, 0.2) }
+          });
+          state.satelliteEntities.set(id, entity);
+        } else {
+          entity.position = satPosition(s);
+        }
+      });
+      for (const [id, entity] of state.satelliteEntities.entries()) {
+        if (!seen.has(id)) {
+          state.viewer.entities.remove(entity);
+          state.satelliteEntities.delete(id);
+        }
+      }
+    }
+
+    function renderLinks(links, satellites) {
+      // Draws polylines between satellites and UEs
+      // Satellite-satellite: purple glow
+      // Ground-satellite: green glow
+      clearEntities(state.linkEntities);
+      if (!state.viewer || (!satellites?.length && !state.userEquipments?.length)) {
+        return;
+      }
+
+      const satMap = new Map((satellites || []).map(s => [String(s.id), s]));
+      const ueMap = new Map((state.userEquipments || []).map(u => [String(u.node_id), u]));
+
+      links.forEach(link => {
+        const aKey = String(link.source);
+        const bKey = String(link.target);
+
+        const satA = satMap.get(aKey);
+        const satB = satMap.get(bKey);
+        const ueA = ueMap.get(aKey);
+        const ueB = ueMap.get(bKey);
+
+        // Determine positions for A and B
+        let posA, posB;
+        let isSatA = false, isSatB = false;
+
+        if (satA) {
+          posA = satPosition(satA);
+          isSatA = true;
+        } else if (ueA) {
+          posA = Cesium.Cartesian3.fromDegrees(
+            Number(ueA.lon_deg),
+            Number(ueA.lat_deg),
+            0
+          );
+        } else {
+          return; // unknown source
+        }
+
+        if (satB) {
+          posB = satPosition(satB);
+          isSatB = true;
+        } else if (ueB) {
+          posB = Cesium.Cartesian3.fromDegrees(
+            Number(ueB.lon_deg),
+            Number(ueB.lat_deg),
+            0
+          );
+        } else {
+          return; // unknown target
+        }
+
+        // If at least one endpoint is unknown, skip
+        if (!posA || !posB) return;
+
+        // Customize color based on link type:
+        // - satellite-to-ground: different color
+        // - satellite-to-satellite: original color
+        const isSat2Ground = (isSatA && !isSatB) || (!isSatA && isSatB);
+        const color = isSat2Ground
+          ? Cesium.Color.fromCssColorString('#4ade80').withAlpha(0.7) // green-ish
+          : Cesium.Color.fromCssColorString('#a78bfa').withAlpha(0.6); // original purple
+
+        const ent = state.viewer.entities.add({
+          polyline: {
+            positions: [posA, posB],
+            width: 1.5,
+            material: new Cesium.PolylineGlowMaterialProperty({
+              glowPower: 0.15,
+              color: color
+            })
+          }
+        });
+
+        state.linkEntities.push(ent);
+      });
+    }
+
+    function clearUEEntities() {
+      state.ueEntities.forEach(e => state.viewer.entities.remove(e));
+      state.ueEntities.length = 0;
+    }
+
+    function renderUEs() {
+      // Places green UE markers on globe at lat/lon
+      clearUEEntities();
+      if (!state.viewer || !state.userEquipments || !state.userEquipments.length) return;
+      state.userEquipments.forEach(u => {
+        try {
+          const svg = `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28'><circle cx='14' cy='14' r='10' fill='#34d399' stroke='white' stroke-width='2'/><text x='14' y='18' text-anchor='middle' font-size='9' fill='white'>UE</text></svg>`)}`;
+          const e = state.viewer.entities.add({
+            position: Cesium.Cartesian3.fromDegrees(Number(u.lon_deg), Number(u.lat_deg), 0),
+            billboard: { image: svg, verticalOrigin: Cesium.VerticalOrigin.BOTTOM },
+            label: { text: u.node_id, font: '12px monospace', fillColor: Cesium.Color.WHITE, pixelOffset: new Cesium.Cartesian2(0, -20) },
+            description: `<b>${u.node_id}</b><br/>UE<br/>Lat: ${Number(u.lat_deg).toFixed(4)}<br/>Lon: ${Number(u.lon_deg).toFixed(4)}`
+          });
+          state.ueEntities.push(e);
+        } catch (e) {
+          // ignore faulty UE
+        }
+      });
+    }
+
+    function renderRoute(route, satellites) {
+      // Highlights active path in red
+      // Path is route.path array of node IDs
+      clearEntities(state.routeEntities);
+      if (!state.viewer || !route?.path?.length || route.path.length < 2) return;
+      const satMap = new Map((satellites || []).map(s => [String(s.id), s]));
+      const ueMap = new Map((state.userEquipments || []).map(u => [String(u.node_id), u]));
+      const positions = [];
+      for (let i = 0; i < route.path.length; i++) {
+        const key = String(route.path[i]);
+        const ue = ueMap.get(key);
+        if (ue) {
+          positions.push(Cesium.Cartesian3.fromDegrees(Number(ue.lon_deg), Number(ue.lat_deg), 0));
+          continue;
+        }
+        const sat = satMap.get(key);
+        if (sat) positions.push(satPosition(sat));
+      }
+      if (positions.length < 2) return;
+      const ent = state.viewer.entities.add({
+        polyline: {
+          positions,
+          width: 4,
+          material: new Cesium.PolylineGlowMaterialProperty({ glowPower: 0.2, color: Cesium.Color.fromCssColorString('#f85149').withAlpha(0.95) })
+        }
+      });
+      state.routeEntities.push(ent);
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function formatMetric(value, unit, digits = 3) {
+      const num = Number(value);
+      if (!Number.isFinite(num)) return '-';
+      return `${num.toFixed(digits)} ${unit}`;
+    }
+
+    function renderPathDetails(route, links, nodeStats) {
+      // Renders hop-by-hop path cards with:
+      // - Node type (UE/Satellite)
+      // - Queueing delay min/avg/max
+      // - Drop ratio
+      // - Active connected links count
+      console.log(nodeStats, route.path);
+      const box = document.getElementById('pathBox');
+      if (!box) return;
+
+      if (!route?.path || route.path.length < 2) {
+        box.className = 'path-list empty-state compact-empty';
+        box.innerHTML = 'No active path.';
+        return;
+      }
+
+      const statsMap = {};
+      if (Array.isArray(nodeStats)) {
+        nodeStats.forEach(ns => { statsMap[String(ns.satelliteid)] = ns; });
+      }
+
+      const sourceName = route.source ?? route.path[0] ?? '';
+      const destinationName = route.destination ?? route.path[route.path.length - 1] ?? '';
+      const cards = [];
+
+      for (let i = 0; i < route.path.length; i++) {
+        const nodeId = String(route.path[i]);
+        const ns = statsMap[nodeId];
+        const isFirst = i === 0;
+        const isLast = i === route.path.length - 1;
+        const isSatellite = !isFirst && !isLast;
+
+        let title = `Satellite: ${nodeId}`;
+        let kindClass = 'path-node-card satellite-card';
+
+        if (isFirst) {
+          title = `UE1: ${sourceName}`;
+          kindClass = 'path-node-card ue-card';
+        } else if (isLast) {
+          title = `UE2: ${destinationName}`;
+          kindClass = 'path-node-card ue-card';
+        }
+
+        cards.push(`
+          <div class="${kindClass}">
+            <div class="path-node-left">
+              <div class="path-node-title">${escapeHtml(title)}</div>
+            </div>
+            <div class="path-node-right">
+              <div class="path-node-meta">
+                ${isSatellite || isFirst ? (ns ? `
+                  <div>Q delay avg: ${formatMetric(ns.avgqueueingdelayms, 'ms')}</div>
+                  <div>Q delay min/max: ${formatMetric(ns.minqueueingdelayms, 'ms')} / ${formatMetric(ns.maxqueueingdelayms, 'ms')}</div>
+                  <div>Drop ratio: ${ns.packetdropratio !== undefined ? (ns.packetdropratio * 100).toFixed(3) + '%' : '-'}</div>
+                  <div style="color: #3b82f6; font-size: 11px; font-weight: bold; margin-top: 2px;">Active Connected Links: ${ns.active_isls !== undefined ? ns.active_isls : '-'}</div>
+                ` : '<div style="color:var(--text2);font-size:11px">No stats yet</div>') : `
+                  <div>Endpoint node</div>
+                `}
+              </div>
+            </div>
+          </div>
+        `);
+
+        if (i < route.path.length - 1) {
+          const from = nodeId;
+          const to = String(route.path[i + 1]);
+          const matched = (links || []).find(link => {
+            const a = String(link.source);
+            const b = String(link.target);
+            return (a === from && b === to) || (a === to && b === from);
+          });
+
+          cards.push(`
+            <div class="path-link-card">
+              <div class="path-link-left">
+                <div class="path-link-title">Link: ${escapeHtml(from)} → ${escapeHtml(to)}</div>
+              </div>
+              <div class="path-link-right">
+                <div class="path-link-meta">
+                  <div>Delay: ${matched ? formatMetric(matched.delay_ms, 'ms') : '-'}</div>
+                  <div>Capacity: ${matched ? formatMetric(matched.capacity_mbps, 'Mbps') : '-'}</div>
+                </div>
+              </div>
+            </div>
+          `);
+        }
+      }
+
+      box.className = 'path-list';
+      box.innerHTML = cards.join('');
+    }
+
+    // --------------------------------------------------------------
+    // renderResponse - Process JSON from Backend
+    // --------------------------------------------------------------
+    function renderResponse(data) {
+      // 1. Update state
+      console.log("Payload received:", data);
+      state.lastData = data;
+      renderLatestPayload(data);
+
+      if (typeof data.reference_time !== 'undefined' && data.reference_time !== null) {
+        const serverRef = Number(data.reference_time);
+        if (!Number.isNaN(serverRef)) {
+          state.lastReferenceTime = serverRef;
+          syncCurrentTimeField(serverRef);
+        }
+      }
+
+      // 2. Extract data
+      const satellites = data.positions?.satellites || [];
+      const links = data.positions?.links || [];
+      const route = data.route || null;
+
+      // 3. Update UI elements
+      document.getElementById('readyVal').textContent = data.ok ? 'yes' : 'no';
+      document.getElementById('callTypeVal').textContent = data.call_type || '-';
+      document.getElementById('hopsVal').textContent = route?.hop_count ?? '-';
+      document.getElementById('snapshotMeta').textContent = `satellites=${satellites.length}, links=${links.length}, next type2 at=${Number(data.next_type2_after || 0).toFixed(2)}`;
+      // update engine/satellite indicators when present
+      if (data.matlab) {
+        state.matlab = data.matlab;
+        document.getElementById('engineVal').textContent = data.matlab.bridge || (data.matlab.ok ? 'matlab_engine' : 'python_fallback');
+        if (typeof data.matlab.number_satellites !== 'undefined') document.getElementById('satCountVal').textContent = String(data.matlab.number_satellites);
+      } else {
+        document.getElementById('satCountVal').textContent = String(satellites.length || '-');
+      }
+
+      const handover = data.handover || {};
+      const snr = data.snr_trigger || {};
+      // Only log noteworthy events to avoid noisy per-second beeps
+      
+      // 6. Log events (Type-2, handover)
+      if (data.call_type === 'type2' || handover.route_changed || (snr && snr.triggered)) {
+        log(`call=${data.call_type}, handover=${handover.route_changed ? 'yes' : 'no'}, snr=${snr.triggered ? snr.reason : 'off'}`,
+            data.call_type === 'type2' ? 'status-warn' : 'status-ok');
+      }
+
+      // 4. Render Cesium
+      renderSatellites(satellites);
+      renderLinks(links, satellites);
+      renderUEs();
+      renderRoute(route, satellites);
+      renderPathDetails(route, links, data.route_node_stats);
+
+      // 5. Update charts and KPIs
+      updateCharts(data);
+      updateKPICards(data);
+
+      // Auto-fit the camera to show the full constellation on first substantial update
+      try {
+        if (!state.didInitialFit && satellites.length > 12 && state.viewer) {
+          const points = satellites.map(s => satPosition(s));
+          const bs = Cesium.BoundingSphere.fromPoints(points);
+          if (bs && bs.radius && isFinite(bs.radius)) {
+            state.viewer.camera.flyToBoundingSphere(bs, { duration: 1.0 });
+            state.didInitialFit = true;
+          }
+        }
+      } catch (e) {
+        console.warn('fit failed', e);
+      }
+    }
+
+    function renderLatestPayload(payload) {
+      const el = document.getElementById('latestPayload');
+      if (!el) return;
+
+      if (typeof payload === 'undefined' || payload === null) {
+        el.textContent = 'No payload received yet.';
+        return;
+      }
+
+      try {
+        el.textContent = JSON.stringify(payload, null, 2);
+      } catch (err) {
+        el.textContent = `Could not render payload: ${err.message}`;
+      }
+    }
+
+    function renderLatestPayloadSent(payload) {
+      const el = document.getElementById('latestPayloadSent');
+      if (!el) return;
+
+      if (typeof payload === 'undefined' || payload === null) {
+        el.textContent = 'No payload received yet.';
+        return;
+      }
+
+      try {
+        el.textContent = JSON.stringify(payload, null, 2);
+      } catch (err) {
+        el.textContent = `Could not render payload: ${err.message}`;
+      }
+    }
+
+    function parseCurrentTimeInput(value) {
+      const m = String(value || '').trim().match(
+        /^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?$/
+      );
+      if (!m) throw new Error('Invalid Current Time format. Use DD/MM/YYYY HH:MM:SS.fractions');
+
+      const [, dd, mm, yyyy, HH, MM, SS, frac = '0'] = m;
+
+      const day = Number(dd);
+      const month = Number(mm);
+      const year = Number(yyyy);
+      const hour = Number(HH);
+      const minute = Number(MM);
+      const second = Number(SS);
+      const ms = Math.round(Number(`0.${frac}`) * 1000);
+
+      const dt = new Date(year, month - 1, day, hour, minute, second, ms);
+
+      if (
+        Number.isNaN(dt.getTime()) ||
+        dt.getFullYear() !== year ||
+        dt.getMonth() !== month - 1 ||
+        dt.getDate() !== day ||
+        dt.getHours() !== hour ||
+        dt.getMinutes() !== minute ||
+        dt.getSeconds() !== second
+      ) {
+        throw new Error('Invalid Current Time value.');
+      }
+
+      return dt.getTime() / 1000;
+    }
+
+    function formatCurrentTimeInput(simulationStart) {
+      const dt = new Date(Number(simulationStart || 0) * 1000);
+      const dd = String(dt.getDate()).padStart(2, '0');
+      const mm = String(dt.getMonth() + 1).padStart(2, '0');
+      const yyyy = dt.getFullYear();
+      const HH = String(dt.getHours()).padStart(2, '0');
+      const MM = String(dt.getMinutes()).padStart(2, '0');
+      const SS = String(dt.getSeconds()).padStart(2, '0');
+      const frac = String(dt.getMilliseconds()).padStart(3, '0');
+      return `${dd}/${mm}/${yyyy} ${HH}:${MM}:${SS}.${frac}`;
+    }
+
+    function syncCurrentTimeField(simulationStart) {
+      document.getElementById('currentTime').value = formatCurrentTimeInput(simulationStart);
+    }
+
+
+    // --------------------------------------------------------------
+    // INIT - POST /api/init
+    // --------------------------------------------------------------
+    async function initSimulation() {
+      const currentTimeValue = document.getElementById('currentTime').value.trim();
+
+      const simulationStart = currentTimeValue
+        ? parseCurrentTimeInput(currentTimeValue)
+        : new Date();
+      state.lastReferenceTime = simulationStart;
+      // 1. Build payload from UI
+      const payload = {
+        tle_file: document.getElementById('tleFile').value,
+        simulation_start_time: simulationStart,
+        source: document.getElementById('source').value,
+        destination: document.getElementById('destination').value,
+        metric: document.getElementById('metric').value,
+        handover_mode: state.handoverMode,
+        ...buildFlowPayload() // traffic params, buffer, priority
+      };
+      // include frontend-defined user equipments (ground nodes)
+      if (state.userEquipments && state.userEquipments.length) {
+        payload.ground_nodes = state.userEquipments.map(u => ({ node_id: u.node_id, lat_deg: Number(u.lat_deg), lon_deg: Number(u.lon_deg) }));
+      }
+      renderLatestPayloadSent(payload);
+      // 2. POST to backend
+      const data = await fetchJson(`${apiBase()}/api/init`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      document.getElementById('modeVal').textContent = data.state?.handover_mode || state.handoverMode;
+      // store matlab info and update UI
+      state.matlab = data.matlab || null;
+      if (state.matlab) {
+        document.getElementById('engineVal').textContent = state.matlab.bridge || (state.matlab.ok ? 'matlab_engine' : 'python_fallback');
+        if (typeof state.matlab.number_satellites !== 'undefined') document.getElementById('satCountVal').textContent = String(state.matlab.number_satellites);
+      }
+
+      if (typeof data.reference_time !== 'undefined' && data.reference_time !== null) {
+        const serverRef = Number(data.reference_time);
+        if (!Number.isNaN(serverRef)) {
+          state.lastReferenceTime = serverRef;
+          syncCurrentTimeField(serverRef);
+        }
+      } else {
+        syncCurrentTimeField(simulationStart);
+      }
+      const currentTimeLabel = document.getElementById('currentTimeLabel');
+      currentTimeLabel.textContent = "Simulation time"
+      log(`initialized: ${JSON.stringify(data.state)}`);
+      // 3. Render response
+      renderResponse(data);
+      // start live updates at 1s interval so satellites move in real time
+      // setAutoPoll(true);
+      state.viewer.camera.flyHome(0.7); // reset view
+      return data;
+    }
+
+    // --------------------------------------------------------------
+    // UPDATE - POST /api/update (Heartbeat)
+    // --------------------------------------------------------------
+    async function updateSimulation() {
+      if (state.pollInProgress) return null;
+      state.pollInProgress = true;
+
+      try {
+        const stepSize = Number(document.getElementById('timeStep')?.value || 10);
+        const nextTime = Number(state.lastReferenceTime || 0) + stepSize;
+
+        // 1. Only grab the slider that actually exists
+        const bgSlider = document.getElementById('bg_slider');
+        // Optional config payload (background traffic)
+        const payload = {
+          background_traffic_mbps: parseFloat(document.getElementById('background_traffic_mbps')?.value),
+          background_traffic_injection_type: state.backgroundTrafficInjectionType,
+        };
+        renderLatestPayloadSent(payload);
+
+        // 2. Prepare the POST request
+        const options = {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        };
+
+        // POST to /api/update with reference_time
+        const data = await fetchJson(
+          `${apiBase()}/api/update?reference_time=${encodeURIComponent(nextTime)}`,
+          options
+        );
+
+        if (!data || data.ok === false) return null;
+
+        // 3. This will now successfully render the constellation
+        renderResponse(data);
+        return data;
+      } catch (err) {
+        console.error("Update failed:", err);
+        return null;
+      } finally {
+        state.pollInProgress = false;
+      }
+    }
+
+
+    // --------------------------------------------------------------
+    // Auto Poll
+    // --------------------------------------------------------------
+    function setAutoPoll(enabled) {
+      state.autoPoll = enabled;
+      const btn = document.getElementById('autoBtn');
+      btn.textContent = `Auto Poll: ${enabled ? 'On' : 'Off'}`;
+      if (state.pollTimer) clearInterval(state.pollTimer);
+      if (enabled) {
+        state.pollTimer = setInterval(() => { if (!state.pollInProgress) updateSimulation(); }, 1000);
+        btn.classList.add('active');
+        // do an immediate update
+        updateSimulation();
+      }
+    }
+
+    function initSidebarTabs() {
+      const buttons = Array.from(document.querySelectorAll('.tab-btn'));
+      const panels = Array.from(document.querySelectorAll('.tab-panel'));
+
+      function activateTab(tabId) {
+        buttons.forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.tab === tabId);
+        });
+        panels.forEach(panel => {
+          panel.classList.toggle('active', panel.id === tabId);
+        });
+      }
+
+      buttons.forEach(btn => {
+        btn.addEventListener('click', () => activateTab(btn.dataset.tab));
+      });
+    }
+
+    function initSidebarResize() {
+      const app = document.getElementById('app');
+      const resizer = document.getElementById('sidebarResizer');
+      const root = document.documentElement;
+
+      let isResizing = false;
+
+      const onMove = (event) => {
+        if (!isResizing) return;
+        const min = 320;
+        const max = Math.min(1000, window.innerWidth - 240);
+        const next = Math.max(min, Math.min(event.clientX, max));
+        root.style.setProperty('--sidebar-width', `${next}px`);
+        if (state.viewer) {
+          requestAnimationFrame(() => state.viewer.resize());
+        }
+      };
+
+      const stop = () => {
+        if (!isResizing) return;
+        isResizing = false;
+        document.body.classList.remove('resizing');
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', stop);
+      };
+
+      resizer.addEventListener('mousedown', (event) => {
+        event.preventDefault();
+        isResizing = true;
+        document.body.classList.add('resizing');
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', stop);
+      });
+
+      window.addEventListener('resize', () => {
+        if (state.viewer) state.viewer.resize();
+      });
+    }
+  const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  scales: {
+    x: {
+      display: true,
+      title: { display: true, text: 'Time', color: '#94a3b8' },
+      ticks: { color: '#94a3b8' }
+    },
+    y: {
+      display: true,
+      beginAtZero: true,
+      title: { display: true, text: 'Value', color: '#94a3b8' },
+      ticks: { color: '#94a3b8' }
+    }
+  },
+  plugins: {
+    legend: { labels: { color: '#e5eefb' } }
+  }
+};
+
+// --------------------------------------------------------------
+// Charts (Chart.js)
+// --------------------------------------------------------------
+let throughputChart, latencyChart, lossChart;
+let lastLatencyTime = 0;
+let lastThroughputTime = 0;
+let lastLossTime = 0;
+
+function initCharts() {
+  // Create 3 line charts with dark theme
+  // Throughput, Latency (min/avg/max), Loss Ratio
+  const getOptions = (yLabel) => {
+    const opts = JSON.parse(JSON.stringify(chartOptions));
+    opts.scales.y.title.text = yLabel;
+    return opts;
+  };
+
+  const ctxThroughput = document.getElementById('plot-throughput').getContext('2d');
+  throughputChart = new Chart(ctxThroughput, {
+    type: 'line',
+    data: { 
+      labels: [], 
+      datasets: [
+        { label: 'Throughput', data: [], borderColor: '#10b981', tension: 0.1 }
+      ]
+    },
+    options: getOptions('Throughput (Mbps)')
+  });
+
+  const ctxLatency = document.getElementById('plot-latency').getContext('2d');
+  latencyChart = new Chart(ctxLatency, {
+    type: 'line',
+    data: { 
+      labels: [], 
+      datasets: [
+        { label: 'Min', data: [], borderColor: '#3b82f6', tension: 0.1 },
+        { label: 'Avg', data: [], borderColor: '#10b981', tension: 0.1 },
+        { label: 'Max', data: [], borderColor: '#ef4444', tension: 0.1 }
+      ]
+    },
+    options: getOptions('Latency (ms)')
+  });
+
+  const ctxLoss = document.getElementById('plot-loss').getContext('2d');
+  lossChart = new Chart(ctxLoss, {
+    type: 'line',
+    data: { 
+      labels: [], 
+      datasets: [
+        { label: 'Loss Ratio', data: [], borderColor: '#f59e0b', tension: 0.1 }
+      ]
+    },
+    options: getOptions('Packet Loss Ratio')
+  });
+}
+
+function updateCharts(payload) {
+  // Append new data points from payload.user_measured_*
+  // Each window has: starttime, throughputmbps, min/avg/max latency, loss_ratio
+  if (!payload) return;
+
+  if (payload.user_measured_latency && payload.user_measured_latency.windows) {
+    payload.user_measured_latency.windows.forEach(w => {
+      if (w.starttime > lastLatencyTime) {
+        latencyChart.data.labels.push(new Date(w.starttime * 1000).toLocaleTimeString());
+        latencyChart.data.datasets[0].data.push(w.min ?? 0);
+        latencyChart.data.datasets[1].data.push(w.avg ?? 0);
+        latencyChart.data.datasets[2].data.push(w.max ?? 0);
+        lastLatencyTime = w.starttime;
+      }
+    });
+    latencyChart.update();
+  }
+
+  if (payload.user_measured_throughput && payload.user_measured_throughput.windows) {
+    payload.user_measured_throughput.windows.forEach(w => {
+      if (w.starttime > lastThroughputTime) {
+        throughputChart.data.labels.push(new Date(w.starttime * 1000).toLocaleTimeString());
+        throughputChart.data.datasets[0].data.push(w.throughputmbps ?? w.value ?? 0);
+        lastThroughputTime = w.starttime;
+      }
+    });
+    throughputChart.update();
+  }
+
+  if (payload.user_measured_loss_ratio && payload.user_measured_loss_ratio.windows) {
+    payload.user_measured_loss_ratio.windows.forEach(w => {
+      if (w.starttime > lastLossTime) {
+        lossChart.data.labels.push(new Date(w.starttime * 1000).toLocaleTimeString());
+        lossChart.data.datasets[0].data.push(w.avg ?? w.loss_ratio ?? w.value ?? 0);
+        lastLossTime = w.starttime;
+      }
+    });
+    lossChart.update();
+  }
+}
+function updateKPICards(data) {
+  // Update KPI cards with aggregated values
+  // Throughput avg, Latency avg, Loss Ratio, Packets
+  // 1. Throughput
+  const tput = data.user_measured_throughput;
+  if (tput) {
+    document.getElementById('kpi-tput').textContent = formatMetric(tput.avg, 'Mbps');
+    document.getElementById('kpi-tput-range').textContent = `min / max: ${formatMetric(tput.min, '')} / ${formatMetric(tput.max, 'Mbps')}`;
+  }
+
+  // 2. Latency
+  const lat = data.user_measured_latency;
+  if (lat) {
+    document.getElementById('kpi-lat').textContent = formatMetric(lat.avg, 'ms');
+    document.getElementById('kpi-lat-range').textContent = `min / max: ${formatMetric(lat.min, '')} / ${formatMetric(lat.max, 'ms')}`;
+  }
+
+  // Packet Loss Ratio
+  const loss = data.user_measured_loss_ratio;
+  // If loss is an object with 'avg', use it; otherwise use the scalar
+  const lossValue = (typeof loss === 'object' && loss !== null) ? (loss.avg || 0) : (loss || 0);
+  
+  const lossEl = document.getElementById('kpi-loss');
+  const lossSubEl = document.getElementById('kpi-loss-sub');
+  
+  lossEl.textContent = (lossValue * 100).toFixed(2) + '%';
+  lossSubEl.style.display = 'none'; // This hides the dash permanently
+
+  // 4. Packets (Created / Arrived)
+  // Assuming these are aggregated from window stats or provided in your payload
+  const created = data.packets_created ?? 0;
+  const arrived = data.packets_arrived ?? 0;
+  document.getElementById('kpi-pkts').textContent = `${arrived} / ${created}`;
+  document.getElementById('kpi-pkts-sub').textContent = 'arrived / created';
+}
+
+  // --------------------------------------------------------------
+  // Boot - Application Entry Point
+  // --------------------------------------------------------------
+
+    async function boot() {
+
+      // 1. Initialize Cesium viewer
+      initCharts();
+      await initViewer();
+
+      // 2. Setup sidebar tabs and resize
+      initSidebarTabs();
+      initSidebarResize();
+      
+      // 3. Set default modes
+      setMode('strict');
+      setBgInjectionType('population_based');
+
+      // 4. Load TLE list from backend
+      await populateTleFiles();
+      //syncCurrentTimeField(Math.floor(Date.now() / 1000))
+      // 5. Add default UEs
+      state.userEquipments.push({ node_id: 'UE in Atlantic Ocean', lat_deg: 30.31, lon_deg: -41.84 });
+      state.userEquipments.push({ node_id: 'UE in Pacific Ocean', lat_deg: -15.00, lon_deg: -116.00 });
+      state.userEquipments.push({ node_id: 'Turin', lat_deg: 45.07, lon_deg: 7.69 });
+      state.userEquipments.push({ node_id: 'New York', lat_deg: 40.71, lon_deg: -74.01 });
+      state.userEquipments.push({ node_id: 'Jakarta', lat_deg: -6.20, lon_deg: 106.82 });
+      try {
+        const health = await fetchJson(`${apiBase()}/api/health`);
+        document.getElementById('readyVal').textContent = health.status || 'ok';
+      } catch (err) {
+        document.getElementById('readyVal').textContent = 'offline';
+        log(`backend not reachable: ${err.message}`, 'status-bad');
+      }
+      document.getElementById('currentTime').addEventListener('change', (e) => {
+            try {
+              const t = parseCurrentTimeInput(e.target.value);
+              state.lastReferenceTime = t;
+              syncCurrentTimeField(t);
+            } catch (err) {
+              log(err.message, 'status-bad');
+            }
+          });
+      document.getElementById('strictBtn').addEventListener('click', () => setMode('strict'));
+      document.getElementById('marginBtn').addEventListener('click', () => setMode('margin'));
+      document.getElementById('bgSourceSideBtn').addEventListener('click', () => setBgInjectionType('source_side_only'));
+      document.getElementById('bgPopulationBtn').addEventListener('click', () => setBgInjectionType('population_based'));
+      document.getElementById('initBtn').addEventListener('click', async () => {
+        try {
+          await initSimulation();
+        } catch (err) {
+          log(`init failed: ${err.message}`, 'status-bad');
+        }
+      });
+      document.getElementById('updateBtn').addEventListener('click', async () => {
+        try {
+          await updateSimulation();
+        } catch (err) {
+          log(`update failed: ${err.message}`, 'status-bad');
+        }
+      });
+      document.getElementById('autoBtn').addEventListener('click', () => setAutoPoll(!state.autoPoll));
+      document.getElementById('startBackendBtn').addEventListener('click', async () => {
+        try {
+          const res = await fetch(`${apiBase()}/api/start_matlab`, { method: 'POST' });
+          const data = await res.json();
+          if (res.ok && data.ok) {
+            log('MATLAB engine started/connected: ' + (data.message || ''), 'status-ok');
+            // refresh metadata from backend
+            try { const ms = await fetchJson(`${apiBase()}/api/matlab_state`); document.getElementById('satCountVal').textContent = String(ms.number_satellites || '-'); } catch(e){}
+          } else {
+            log('Could not start MATLAB: ' + (data.error || data.message || res.statusText), 'status-bad');
+          }
+        } catch (err) {
+          log('Start backend failed: ' + err.message, 'status-bad');
+        }
+      });
+        document.getElementById('resetViewBtn').addEventListener('click', () => {
+          state.viewer.camera.flyHome(0.7);
+        });
+        document.getElementById('showGlobeBtn').addEventListener('click', () => {
+          try {
+            state.viewer.scene.globe.show = true;
+            for (let i = 0; i < state.viewer.imageryLayers.length; i++) {
+              const layer = state.viewer.imageryLayers.get(i);
+              if (layer) layer.show = true;
+            }
+            log('Globe forced visible', 'status-ok');
+          } catch (err) {
+            log('Could not force globe: ' + err.message, 'status-bad');
+          }
+        });
+      // UE management
+      document.getElementById('addUeBtn').addEventListener('click', () => {
+        const id = (document.getElementById('ueId').value || '').trim();
+        const lat = Number(document.getElementById('ueLat').value || 0);
+        const lon = Number(document.getElementById('ueLon').value || 0);
+        if (!id) return;
+        state.userEquipments.push({ node_id: id, lat_deg: lat, lon_deg: lon });
+        renderUEList();
+      });
+      document.getElementById('clearUeBtn').addEventListener('click', () => {
+        state.userEquipments = [];
+        renderUEList();
+      });
+      renderUEList();
+
+      // 6. Render priority list
+      renderPriorityList();
+      onTrafficTypeChange();
+      
+      // 7. Attach event listeners
+      document.getElementById('user_flow_peak_rate')?.addEventListener('input', () => {
+        if (document.getElementById('user_flow_cbr_vbr')?.value === 'CBR') {
+          document.getElementById('user_flow_avg_rate').value =
+            document.getElementById('user_flow_peak_rate').value;
+        }
+      });
+      document.getElementById('addPriorityBtn')?.addEventListener('click', addPriorityLevel);
+    }
+
+    boot().catch(err => log(err.message, 'status-bad'));
+  </script>
+</body>
+</html>

@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>6G LEO NTN Simulator | Advanced Orbital Network Engineering</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #03060f;
+            --bg-panel: #0a0f1c;
+            --bg-card: #111827;
+            --accent-cyan: #00f2ff;
+            --accent-purple: #7c3aed;
+            --accent-glow: rgba(0, 242, 255, 0.15);
+            --text-white: #f8fafc;
+            --text-gray: #94a3b8;
+            --text-dim: #64748b;
+            --border: #1e293b;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-white);
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* Dynamic Background */
+        #stars-bg {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: -1;
+            background: 
+                radial-gradient(circle at 20% 20%, rgba(124, 58, 237, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 80% 80%, rgba(0, 242, 255, 0.05) 0%, transparent 40%),
+                var(--bg-deep);
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0; width: 100%;
+            background: rgba(3, 6, 15, 0.7);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            z-index: 1000;
+            padding: 1.2rem 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: padding 0.3s ease;
+        }
+
+        .logo {
+            font-weight: 800;
+            font-size: 1.4rem;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo-icon {
+            width: 12px; height: 12px;
+            background: var(--accent-cyan);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--accent-cyan);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(0, 242, 255, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(0, 242, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(0, 242, 255, 0); }
+        }
+
+        .nav-links { display: flex; gap: 2rem; align-items: center; }
+        .nav-links a {
+            color: var(--text-gray);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: color 0.3s;
+            position: relative;
+        }
+        .nav-links a:hover { color: var(--text-white); }
+        .nav-links a::after {
+            content: ''; position: absolute; bottom: -5px; left: 0;
+            width: 0; height: 2px; background: var(--accent-cyan);
+            transition: width 0.3s;
+        }
+        .nav-links a:hover::after { width: 100%; }
+
+        /* Layout Components */
+        section {
+            min-height: 100vh;
+            padding: 8rem 5% 4rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .section-tag {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--accent-cyan);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        h1, h2, h3 { letter-spacing: -1px; line-height: 1.1; }
+        h2 { font-size: 3.5rem; margin-bottom: 1.5rem; font-weight: 800; }
+        h3 { font-size: 1.8rem; margin-bottom: 1rem; font-weight: 700; }
+        p { color: var(--text-gray); font-size: 1.1rem; max-width: 800px; }
+
+        /* Hero Section */
+        #hero {
+            text-align: left;
+            position: relative;
+        }
+        #hero h1 {
+            font-size: 5.5rem;
+            font-weight: 900;
+            background: linear-gradient(120deg, #fff 40%, var(--accent-cyan) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 2rem;
+            max-width: 1000px;
+        }
+        #hero p { font-size: 1.5rem; color: var(--text-gray); max-width: 700px; margin-bottom: 3rem; }
+        
+        .hero-stats {
+            display: flex;
+            gap: 3rem;
+            margin-top: 4rem;
+            border-top: 1px solid var(--border);
+            padding-top: 2rem;
+        }
+        .stat-item h4 { font-size: 2.5rem; color: var(--accent-cyan); font-weight: 700; }
+        .stat-item span { color: var(--text-dim); font-size: 0.9rem; text-transform: uppercase; }
+
+        /* The Problem Section */
+        #problem .problem-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+        }
+        .problem-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s;
+        }
+        .problem-card:hover { transform: translateY(-5px); border-color: var(--accent-purple); }
+        .problem-card h4 { color: var(--text-white); font-size: 1.2rem; margin-bottom: 0.5rem; }
+        .problem-card p { font-size: 1rem; }
+
+        /* Interactive Architecture Section */
+        .arch-explorer {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 3rem;
+            margin-top: 3rem;
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            min-height: 500px;
+        }
+
+        .arch-tabs { display: flex; flex-direction: column; gap: 1rem; }
+        .arch-tab {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-gray);
+            padding: 1.5rem;
+            text-align: left;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Inter', sans-serif;
+        }
+        .arch-tab:hover { border-color: var(--accent-cyan); color: var(--text-white); }
+        .arch-tab.active {
+            background: linear-gradient(135deg, rgba(0, 242, 255, 0.1), rgba(124, 58, 237, 0.1));
+            border-color: var(--accent-cyan);
+            color: var(--text-white);
+        }
+        .arch-tab h4 { font-size: 1.1rem; margin-bottom: 0.2rem; }
+        .arch-tab span { font-size: 0.8rem; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; }
+
+        .arch-content { padding: 1rem; display: none; opacity: 0; transition: opacity 0.5s; }
+        .arch-content.active { display: block; opacity: 1; }
+        .arch-content h3 { color: var(--accent-cyan); margin-bottom: 1.5rem; }
+        .arch-content ul { list-style: none; margin-top: 1.5rem; }
+        .arch-content ul li {
+            margin-bottom: 1rem;
+            padding-left: 1.5rem;
+            position: relative;
+            color: var(--text-gray);
+        }
+        .arch-content ul li::before {
+            content: '▹';
+            position: absolute; left: 0;
+            color: var(--accent-purple);
+        }
+        .arch-highlight {
+            background: rgba(0, 242, 255, 0.05);
+            border-left: 3px solid var(--accent-cyan);
+            padding: 1rem;
+            margin: 1.5rem 0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            color: var(--text-white);
+        }
+
+        /* Why Us Section */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 2.5rem;
+            border-radius: 12px;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 3px;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.4s;
+        }
+        .feature-card:hover::before { transform: scaleX(1); }
+        .feature-card:hover { border-color: transparent; }
+        
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            display: inline-block;
+        }
+        .feature-card h3 { font-size: 1.3rem; margin-bottom: 1rem; }
+        .feature-card p { font-size: 1rem; }
+
+        /* Team Section */
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+        .team-card {
+            text-align: center;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 2.5rem 1.5rem;
+            border-radius: 12px;
+            transition: transform 0.3s;
+        }
+        .team-card:hover { transform: translateY(-8px); }
+        .team-avatar {
+            width: 80px; height: 80px;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            border-radius: 50%;
+            margin: 0 auto 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--bg-deep);
+        }
+        .team-card h4 { font-size: 1.1rem; margin-bottom: 0.5rem; }
+        .team-card p { font-size: 0.9rem; color: var(--text-dim); }
+
+        /* Footer */
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 3rem 5%;
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            background: var(--bg-panel);
+        }
+
+        /* Scroll Reveal Animations */
+        .reveal {
+            opacity: 0;
+            transform: translateY(40px);
+            transition: all 0.8s cubic-bezier(0.5, 0, 0, 1);
+        }
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            #hero h1 { font-size: 3.5rem; }
+            #problem .problem-container { grid-template-columns: 1fr; }
+            .arch-explorer { grid-template-columns: 1fr; }
+            .team-grid { grid-template-columns: repeat(2, 1fr); }
+            .nav-links { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="stars-bg"></div>
+
+    <!-- Navigation -->
+    <nav>
+        <div class="logo">
+            <div class="logo-icon"></div>
+            6G LEO NTN
+        </div>
+        <div class="nav-links">
+            <a href="#problem">The Challenge</a>
+            <a href="#architecture">Architecture</a>
+            <a href="#why-us">Why Us</a>
+            <a href="#team">Team</a>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section id="hero">
+        <div class="reveal">
+            <span class="section-tag">Next-Gen Non-Terrestrial Networks</span>
+            <h1>Engineering the Future of Direct-to-Device 6G Satellite Communications.</h1>
+            <p>An end-to-end simulation framework that transforms unpredictable orbital mechanics into dynamic, routable, and highly optimized network graphs.</p>
+        </div>
+        <div class="hero-stats reveal">
+            <div class="stat-item">
+                <h4>7,153</h4>
+                <span>Simulated Starlink Satellites</span>
+            </div>
+            <div class="stat-item">
+                <h4>28 GHz</h4>
+                <span>RF Link Budget Modeling</span>
+            </div>
+            <div class="stat-item">
+                <h4>3-Layer</h4>
+                <span>Resilient Architecture</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- The Problem -->
+    <section id="problem">
+        <div class="reveal">
+            <span class="section-tag">The Challenge</span>
+            <h2>Space is Dynamic. Your Network Can't Be Static.</h2>
+            <p>Terrestrial networks assume fixed infrastructure. In LEO constellations, satellites move at ~7.5 km/s, line-of-sight windows open and close continuously, and propagation delays fluctuate. Static routing is insufficient. Our simulator uses Dijkstra's algorithm to recompute routes dynamically, but only when the current link validity expires or SNR conditions trigger a handover — typically every 20-60 seconds. This balances routing optimality with computational cost</p>
+        </div>
+        
+        <div class="problem-container reveal">
+            <div>
+                <div class="problem-card">
+                    <h4>Continuous Topology Changes</h4>
+                    <p>Satellites are constantly moving. A route that is optimal now might be invalid in 30 seconds due to Earth occlusion or distance constraints.</p>
+                </div>
+                <div class="problem-card">
+                    <h4>RF Link Degradation</h4>
+                    <p>At 28 GHz, links are highly susceptible to atmospheric attenuation, rain fade, and Doppler shifts. SNR margins erode rapidly, requiring immediate traffic rerouting.</p>
+                </div>
+                <div class="problem-card">
+                    <h4>Complex Queueing & QoS</h4>
+                    <p>Maintaining latency-sensitive 6G traffic across varying hop counts and varying link capacities requires intelligent, priority-based packet scheduling.</p>
+                </div>
+            </div>
+            <div style="background: var(--bg-panel); border-radius: 16px; padding: 2rem; border: 1px solid var(--border); height: fit-content;">
+                <h3 style="font-size: 1.5rem; margin-bottom: 1rem;">Our Solution</h3>
+                <p style="margin-bottom: 1.5rem;">We built a simulator that bridges the gap between high-fidelity orbital physics and advanced network routing. By converting real TLE data into time-varying graphs, we enable event-triggered routing and seamless handovers before links drop.</p>
+                <div style="font-family: 'JetBrains Mono'; color: var(--accent-cyan); font-size: 0.9rem;">
+                    // Trigger Type-2 link refresh<br>
+                    if (snr_margin < 3dB) {<br>
+                    &nbsp;&nbsp;recompute_route();<br>
+                    }
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Architecture -->
+    <section id="architecture">
+        <div class="reveal">
+            <span class="section-tag">System Architecture</span>
+            <h2>A Decoupled, Three-Layer Engineering Masterpiece</h2>
+            <p>We didn't build a monolith. We separated physics, logic, and visualization into independent domains. This ensures that if MATLAB crashes, the Python fallback takes over. If the network drops, the 3D UI still renders. Resilience by design.</p>
+        </div>
+
+        <div class="arch-explorer reveal">
+            <div class="arch-tabs">
+                <button class="arch-tab active" onclick="showArch('layer1')">
+                    <h4>Physical Layer</h4>
+                    <span>MATLAB Engine</span>
+                </button>
+                <button class="arch-tab" onclick="showArch('layer2')">
+                    <h4>Network Layer</h4>
+                    <span>Python / Flask</span>
+                </button>
+                <button class="arch-tab" onclick="showArch('layer3')">
+                    <h4>Visualization</h4>
+                    <span>CesiumJS / Web</span>
+                </button>
+            </div>
+
+            <div id="layer1" class="arch-content active">
+                <h3>Layer 1: Physical & Orbital (MATLAB)</h3>
+                <p>We leverage MATLAB's Satellite Communications Toolbox to handle the heavy astrodynamics. We don't approximate orbits; we use standard SGP4 propagators from raw TLEs.</p>
+                <div class="arch-highlight">
+                    Inputs: TLE Files (Iridium, OneWeb, Starlink)<br>
+                    Outputs: ECEF Positions, LOS Matrices, RF Metrics
+                </div>
+                <h3 style="font-size: 1.2rem; margin-top: 2rem;">Why MATLAB?</h3>
+                <p>MATLAB provides native scenario objects, ground station primitives, and coordinate-frame aware calculations out of the box. Writing this from scratch in Python would require validating thousands of lines of custom astrodynamics code.</p>
+                <ul>
+                    <li><strong>Earth Occlusion:</strong> Angular tests with a 50km atmospheric margin.</li>
+                    <li><strong>Link Budget:</strong> ITU-R P.618/P.676 models for rain, oxygen, and scintillation.</li>
+                    <li><strong>Capacity:</strong> Shannon-based limits with modulation ceilings (D2D: 10MHz, ISL_OPT: 2GHz).</li>
+                </ul>
+            </div>
+
+            <div id="layer2" class="arch-content">
+                <h3>Layer 2: Network & Routing (Python)</h3>
+                <p>The brain of the operation. A Flask server orchestrates the simulation, converting MATLAB's flat arrays into dynamic NetworkX graphs. It handles routing, handovers, and packet-level event simulation.</p>
+                <div class="arch-highlight">
+                    API: /api/init & /api/update<br>
+                    Logic: Event-triggered Type-1 (Positions) & Type-2 (Links) polling
+                </div>
+                <h3 style="font-size: 1.2rem; margin-top: 2rem;">The Handover Problem</h3>
+                <p>We don't wait for links to die. Our orchestrator monitors SNR windows. In "Margin" mode, if the short-window SNR drops 1dB faster than the long-window, a handover is triggered with a 3dB hysteresis to prevent flapping.</p>
+                <ul>
+                    <li><strong>Routing Metrics:</strong> Min-Hop, Total Delay (ms), Distance (km) via Dijkstra.</li>
+                    <li><strong>Traffic:</strong> CBR and ON/OFF VBR sources with strict-priority and WRR queueing.</li>
+                    <li><strong>Resilience:</strong> Fallback topology generator if MATLAB Engine is unavailable.</li>
+                </ul>
+            </div>
+
+            <div id="layer3" class="arch-content">
+                <h3>Layer 3: Operator Visualization (CesiumJS)</h3>
+                <p>We replaced static 2D plots with a fully interactive WGS84 3D globe. Operators can see the constellation move, watch links form and break, and track active routes in real-time.</p>
+                <div class="arch-highlight">
+                    Tech: CesiumJS 1.117 + Chart.js<br>
+                    Deployment: Static HTML (No build step required)
+                </div>
+                <h3 style="font-size: 1.2rem; margin-top: 2rem;">Why CesiumJS?</h3>
+                <p>Hand-rolling Earth rendering in Three.js creates massive math overhead. Cesium natively understands ECEF coordinates, camera controls, and imagery layers, allowing us to focus purely on NTN functionality.</p>
+                <ul>
+                    <li><strong>Real-time Feedback:</strong> Satellites rendered as billboards, links as polylines.</li>
+                    <li><strong>Analytics:</strong> Live Chart.js dashboards for throughput, latency, and packet loss.</li>
+                    <li><strong>Isolation:</strong> REST boundary ensures UI crashes never affect the simulation core.</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Why Us -->
+    <section id="why-us">
+        <div class="reveal">
+            <span class="section-tag">Value Proposition</span>
+            <h2>Why Choose Our Simulator?</h2>
+            <p>We didn't just write code; we engineered a solution that addresses the specific pain points of 6G NTN research and demonstration.</p>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-card reveal">
+                <div class="feature-icon">🛰️</div>
+                <h3>True to Physics</h3>
+                <p>We don't guess satellite positions. We use real TLEs and SGP4 propagation. Our link budget models ITU standards, ensuring your simulations reflect real-world RF challenges.</p>
+            </div>
+            <div class="feature-card reveal">
+                <div class="feature-icon">🧠</div>
+                <h3>Intelligent Handovers</h3>
+                <pOur SNR-triggered handover logic (Strict & Margin modes) anticipates link degradation. We compute alternative paths before the current route fails, ensuring zero packet loss during transitions.</p>
+            </div>
+            <div class="feature-card reveal">
+                <div class="feature-icon">🔄</div>
+                <h3>Fallback Resilience</h3>
+                <p>If MATLAB fails mid-demo, our Python layer synthesizes a deterministic orbital model. The show goes on. This makes our platform perfect for high-stakes presentations.</p>
+            </div>
+            <div class="feature-card reveal">
+                <div class="feature-icon">📊</div>
+                <h3>Deep QoS Analytics</h3>
+                <p>Beyond basic routing, we simulate a full packet event loop. Measure queueing delay, WRR priority drops, and aggregate throughput across varying CBR/VBR traffic loads.</p>
+            </div>
+            <div class="feature-card reveal">
+                <div class="feature-icon">🌐</div>
+                <h3>Multi-Metric Routing</h3>
+                <p>Test different network philosophies instantly. Switch between Min-Hop (reduced processing), Total Delay (latency-critical), or Distance (geometry-aware) with a single API call.</p>
+            </div>
+            <div class="feature-card reveal">
+                <div class="feature-icon">🖥️</div>
+                <h3>Immersive 3D UI</h3>
+                <p>Stop staring at logs. Watch your routes light up across a 3D globe. The CesiumJS dashboard gives operators immediate spatial awareness of the constellation and active links.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Team -->
+    <section id="team">
+        <div class="reveal">
+            <span class="section-tag">The Engineers</span>
+            <h2>Meet the Architects</h2>
+            <p>A team of dedicated engineers who bridged the gap between orbital mechanics and network routing.</p>
+        </div>
+
+        <div class="team-grid">
+                        <div class="team-card reveal">
+                <div class="team-avatar">GB</div>
+                <h4>Giulio Bollea</h4>
+                <p>Network Layer Simulation & Integration Testing</p>
+            </div>
+            <div class="team-card reveal">
+                <div class="team-avatar">PC</div>
+                <h4>Paolo Cerutto</h4>
+                <p>Physical Layer Simulation & Integration Testing</p>
+            </div>
+            <div class="team-card reveal">
+                <div class="team-avatar">GD</div>
+                <h4>Gianluca Ditella</h4>
+                <p>Frontend Integration, Visualization Flow & Repo Coordination</p>
+            </div>
+            <div class="team-card reveal">
+                <div class="team-avatar">JP</div>
+                <h4>Jacopo Piergiovanni</h4>
+                <p>Architecture & Routing Logic Implementation</p>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <p>&copy; 2026 6G LEO NTN Simulator. Designed and engineered by Bollea, Cerutto, Ditella & Piergiovanni.</p>
+    </footer>
+
+    <script>
+        // Scroll Reveal Animation
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.reveal').forEach((el) => observer.observe(el));
+
+        // Interactive Architecture Tabs
+        function showArch(layerId) {
+            // Hide all content
+            document.querySelectorAll('.arch-content').forEach(el => el.classList.remove('active'));
+            // Remove active from all tabs
+            document.querySelectorAll('.arch-tab').forEach(el => el.classList.remove('active'));
+            
+            // Show selected content
+            document.getElementById(layerId).classList.add('active');
+            
+            // Add active to clicked tab (event delegation would be better, but this works)
+            event.currentTarget.classList.add('active');
+        }
+
+        // Dynamic Starfield Generation
+        const starsBg = document.getElementById('stars-bg');
+        for(let i=0; i<100; i++) {
+            let star = document.createElement('div');
+            star.style.position = 'absolute';
+            star.style.left = Math.random() * 100 + '%';
+            star.style.top = Math.random() * 100 + '%';
+            star.style.width = Math.random() * 2 + 'px';
+            star.style.height = Math.random() * 2 + 'px';
+            star.style.background = '#fff';
+            star.style.opacity = Math.random() * 0.5;
+            star.style.borderRadius = '50%';
+            starsBg.appendChild(star);
+        }
+    </script>
+</body>
+</html>

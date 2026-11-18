@@ -1,0 +1,180 @@
+# .gitignore per 6G-NTN Simulator (Python/MATLAB/Cesium)
+
+# ==================== PYTHON ====================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb_checkpoints
+
+# Environments
+.env
+.venv
+.venv314
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+.spyderproject
+.spyproject
+.ropeproject
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ==================== MATLAB ====================
+# MATLAB specific
+*.mex*
+*.mx
+*.cpp.mex*
+*.mexw64
+*.mexw32
+*.mexglx
+*.mexmac
+*.mexmaci
+*.mexmaci64
+*.mx.so
+*.asv
+*.auv
+*.ctf
+*.daq
+*.dbm
+*.mat
+*.mlx
+*.mlf
+*.mtlb
+*.req
+*.slx*
+*.slxp
+*.sld*
+*.sltx*
+*.slreq*
+*.slreqx*
+*.ssc*
+*.sldd*
+*.sldx*
+*.slx.ap*
+*.slx.asv.*
+*.slx.original
+*.slx.web*
+*.slxc*
+
+# Autosaves
+*~.*
+
+# MATLAB figures and outputs
+*.fig
+*.results.*
+*.session.*
+*.mlappdesign*
+
+# Simulink cache
+.slprj/
+simulink/
+cache/
+web/
+
+# MATLAB path files
+pathdef.m
+
+# ==================== CESIUM ====================
+# Cesium build outputs
+build/
+dist/
+node_modules/
+*.log
+coverage/
+
+# Cesium Ion assets (local cache)
+CesiumIon/
+ion-assets/
+
+# ==================== DOCKER ====================
+.dockerignore
+Dockerfile.*ignore
+.gitpod.yml
+
+# ==================== DATA OUTPUTS ===============
+data/
+output/
+
+# ==================== DOCUMENTATION & RESEARCH ===============
+# PowerPoint presentations
+*.ppt
+*.pptx
+results/
+logs/
+figures/
+plots/
+*.csv
+*.jpg
+*.mat.bak
+
+# ==================== MISC ======================
+*.swp
+*.swo
+*#
+
+docs/*.aux
+docs/*.fdb_latexmk
+docs/*.fls
+docs/*.lof
+docs/*.lot
+docs/*.out
+docs/*.synctex.gz
+docs/*.toc
+
+matlab/clean_*.tle
+matlab/*_clean.tle
