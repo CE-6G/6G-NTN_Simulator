@@ -125,7 +125,7 @@ For a complete setup and launch procedure, begin with [InstallationGuide.md](./I
 This project was developed by:
 
 - [Giulio Bollea](https://github.com/giu-lio) — Network Layer Simulation & Integration Testing
-- Paolo Cerutto — Physical Layer Simulation & Integration Testing
+- [Paolo Cerutto](https://github.com/PaoloCerutto) — Physical Layer Simulation & Integration Testing
 - Gianluca Ditella — Frontend Integration, Visualization Flow & Repository Coordination
 - Jacopo Piergiovanni — Architecture & Routing Logic Implementation
 
