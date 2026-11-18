@@ -43,6 +43,7 @@ http://127.0.0.1:8080/visualizer/index.html
 
 In the panel:
 - Ensure API host/port are `127.0.0.1:8000`.
+- Launch MATLAB and wait for it to open.
 - Click `Start Backend`, and wait for the `MATLAB engine started/connected: matlab_connected` message to be displayed in the `Status` tab.
 - Select the simulation parameters in the `Connection`, `Flow Setup` and `Network Setup` tabs.
 - Click `Init` in the `Connection` tab.
